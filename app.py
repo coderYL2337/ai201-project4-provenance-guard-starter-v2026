@@ -30,6 +30,7 @@ from flask import Flask, jsonify, request
 
 import audit
 import config
+import detector
 
 app = Flask(__name__)
 
@@ -203,15 +204,42 @@ def submit():
     text = payload.get("text")
     creator_id = payload.get("creator_id")
 
-    # Milestone 3, step 1: hardcoded response, to confirm the route answers
-    # before any signal or scoring logic is wired in.
+    if not isinstance(text, str) or not text.strip():
+        return jsonify({
+            "error": "bad_request",
+            "message": "`text` must be a non-empty string.",
+        }), 400
+
+    content_id = str(uuid.uuid4())
+
+    try:
+        model_score = detector.model_signal(text)
+    except detector.DetectorUnavailable as exc:
+        return jsonify({"error": "detector_unavailable", "message": str(exc)}), 503
+    except ValueError as exc:
+        return jsonify({"error": "bad_request", "message": str(exc)}), 400
+
+    # Milestone 3, step 3: only the first signal is wired up — confidence and
+    # label stay placeholders until scoring and labelling are built.
+    guess = "unsure"
+    label = "placeholder — scoring isn't wired up yet"
+    style_score = 0.5
+
+    audit.log_decision(
+        content_id=content_id,
+        creator_id=creator_id,
+        guess=guess,
+        model_score=model_score,
+        label=label,
+    )
+
     return jsonify({
-        "content_id": str(uuid.uuid4()),
-        "guess": "unsure",
-        "confidence": 0.5,
-        "label": "placeholder — scoring isn't wired up yet",
-        "model_score": 0.5,
-        "style_score": 0.5,
+        "content_id": content_id,
+        "guess": guess,
+        "confidence": model_score,
+        "label": label,
+        "model_score": model_score,
+        "style_score": style_score,
     })
 
 
