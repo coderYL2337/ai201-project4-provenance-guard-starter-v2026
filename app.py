@@ -31,6 +31,8 @@ from flask import Flask, jsonify, request
 import audit
 import config
 import detector
+import scoring
+import stylometry
 
 app = Flask(__name__)
 
@@ -219,24 +221,28 @@ def submit():
     except ValueError as exc:
         return jsonify({"error": "bad_request", "message": str(exc)}), 400
 
-    # Milestone 3, step 3: only the first signal is wired up — confidence and
-    # label stay placeholders until scoring and labelling are built.
+    style_score = stylometry.style_signal(text)
+    combined_score = scoring.combine_signals(model_score, style_score)
+
+    # Milestone 4: both signals and the combined score are real now —
+    # confidence and label stay placeholders until Milestone 5.
     guess = "unsure"
-    label = "placeholder — scoring isn't wired up yet"
-    style_score = 0.5
+    label = "placeholder — label text isn't wired up yet"
 
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
         guess=guess,
         model_score=model_score,
+        style_score=style_score,
+        combined_score=combined_score,
         label=label,
     )
 
     return jsonify({
         "content_id": content_id,
         "guess": guess,
-        "confidence": model_score,
+        "confidence": combined_score,
         "label": label,
         "model_score": model_score,
         "style_score": style_score,

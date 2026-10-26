@@ -50,12 +50,15 @@ DETECTOR_MAX_TOKENS = 400
 # ─── Scoring (Milestone 4) ───────────────────────────────────────────────────
 # How much each signal counts toward the combined score.
 #
-# ⚠️ These are placeholders. Milestone 4 asks you to write your combining rule
-# down BEFORE you code it, and to put the numbers in your README. Whatever you
-# decide, it goes here.
+# Weighted toward the style signal, not split evenly. The model signal has a
+# named, structural blind spot — it reads plain, ordinary human writing as
+# AI-like — while the style signal is wrong only when someone deliberately
+# games sentence shape. Leaning on the harder-to-trigger failure mode means
+# fewer honest writers get accused, at the cost of some AI text scoring lower
+# than it should. See README "The combining rule" for the calibration case.
 
-WEIGHT_MODEL_SIGNAL = 0.5
-WEIGHT_STYLE_SIGNAL = 0.5
+WEIGHT_MODEL_SIGNAL = 0.35
+WEIGHT_STYLE_SIGNAL = 0.65
 
 
 # ─── Thresholds (Milestone 5) ────────────────────────────────────────────────

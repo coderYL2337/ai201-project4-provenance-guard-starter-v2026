@@ -72,9 +72,17 @@
 <!-- Write the rule in words, then give the numbers. What happens when the two
      signals disagree? -->
 
-**The rule:**
+**The rule:** a weighted average, weighted toward the style signal rather
+than split evenly. The model signal's failure mode is structural — it reads
+plain, ordinary human writing as AI-like, with nothing the writer did wrong.
+The style signal's failure mode requires someone to deliberately reshape
+their sentences. When the two disagree, I'd rather the result lean on the
+harder-to-trigger failure — which in practice means leaning toward whichever
+signal reads lower, since it's the model signal that tends to run high on
+honest writing.
 
-**The numbers:**
+**The numbers:** `WEIGHT_MODEL_SIGNAL = 0.35`, `WEIGHT_STYLE_SIGNAL = 0.65`
+(`config.py`).
 
 **Where it lives:** `scoring.py::combine_signals`
 
@@ -83,7 +91,26 @@
 
 **A case where my two signals split, and what my rule does with it:**
 
+Three calibration texts through both signals (`model_score` / `style_score`):
 
+| Text | model_score | style_score |
+|---|---|---|
+| Clearly AI (generic framework paragraph) | 0.8864 | 0.6361 |
+| Clearly human (toast/keys anecdote) | 0.6846 | 0.5852 |
+| Borderline (plain "went to the store" diary) | 0.8591 | 0.6239 |
+
+They **agree on ranking** — both put the AI paragraph highest and the human
+anecdote lowest — but **split on confidence** for the clearly-AI text: `model_score`
+clears `AI_THRESHOLD` (0.65) on its own, `style_score` stays just under it, in
+the unsure band. The split that worries me more is the clearly-human text:
+`model_score` (0.6846) alone would call a true human anecdote "high-confidence
+AI" just for using short sentences and common words — the exact blind spot
+named in `detector.py`. `style_score` (0.5852) pulls the other way, so a
+simple average lands at 0.635, just under the AI threshold — "unsure" rather
+than an outright wrong accusation. That's the case `combine_signals` has to
+handle: when the model signal is ready to accuse plain writing, the style
+signal needs enough weight to drag it back out of the AI band, not just
+average it into "unsure" by luck.
 
 ---
 
