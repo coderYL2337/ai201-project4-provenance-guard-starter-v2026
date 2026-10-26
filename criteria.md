@@ -42,63 +42,107 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
-## 1.
+## 1. False positives on my own writing
 
 <!-- Your criterion. It must name a number. -->
 
-
+Of 10 short paragraphs I write myself (not AI, not copied from anywhere), at
+most 1 is labelled "high-confidence AI" across all three trials.
 
 **Why this target:**
 
-
+A false accusation costs a real writer a lot — their post gets pulled, their
+account looks suspicious, and they have to appeal something they know is
+true. Missing some AI text costs the site very little by comparison: a little
+more unflagged AI writing in the feed. Because the two mistakes aren't
+equally expensive, I'm willing to tolerate a worse miss rate on AI text in
+exchange for a much better false-positive rate on human text. 1 in 10 is
+strict enough to notice if the detector drifts, but not so strict that any
+single unlucky perplexity reading fails the whole criterion.
 
 ---
 
-## 2.
+## 2. Score spread between obvious cases
 
 <!-- Your criterion. -->
 
-
+For a piece of text I'm confident is AI-generated and a piece I'm confident is
+human-written on the same topic and length, the combined scores differ by at
+least 0.4, in all three trials.
 
 **Why this target:**
 
-
+If the two signals can't separate the easiest possible case — something
+obviously machine-written next to something obviously not — then the
+thresholds in `config.py` are arbitrary lines through noise rather than a
+meaningful split. 0.4 is roughly the width of two label bands, so a real gap
+between clear cases should visibly cross at least one threshold. Requiring it
+to hold on all three trials (not just on average) matters because the model
+signal runs an actual model, and a spread that only shows up sometimes isn't
+something I can rely on to drive a label a reader sees.
 
 ---
 
-## 3.
+## 3. All three labels are reachable
 
 <!-- Your criterion. -->
 
-
+Each of the three labels ("high-confidence human", "unsure", "high-confidence
+AI") is produced by at least one submission in every trial, when I submit one
+clearly-AI, one clearly-human, and one deliberately borderline text.
 
 **Why this target:**
 
-
+A label nobody can ever reach isn't a label, it's dead code — and the
+config.py warning about a stub style signal collapsing the reachable range is
+a real failure mode here, not a hypothetical one. If "high-confidence human"
+never fires, every writer effectively starts from "unsure" no matter how
+plainly they wrote, which quietly defeats the whole point of having three
+bands instead of a single accusation. Checking this on every trial, not just
+once, catches the case where a label is reachable in principle but only for a
+sliver of scores the model signal rarely lands on.
 
 ---
 
-## 4.
+## 4. The appeal path always works
 
 <!-- Your criterion. -->
 
-
+For 10 separate submissions followed by an appeal against each, 10 out of 10
+appeals move the content's status to "under_review" and 10 out of 10 appear
+in the audit log, in every trial.
 
 **Why this target:**
 
-
+The appeal route is the only thing standing between a wrong label and a
+writer having no recourse at all, so it has to work every single time — a
+9-in-10 success rate here means roughly one in ten wrongly-accused writers
+files an appeal that silently does nothing, which is worse than not offering
+appeals at all because it looks like due process without providing any. This
+is also the one criterion where I don't think any failure rate above zero is
+acceptable, since the whole feature exists specifically to catch the mistakes
+the detector makes.
 
 ---
 
-## 5.
+## 5. Bad input never crashes the service
 
 <!-- Your criterion. -->
 
-
+Sending `text` missing, `text` as an empty string, `text` as `null`, and
+`text` as a 50,000-word string each gets a 4xx JSON response (never a 5xx or
+a connection drop), in all three trials, for all four inputs.
 
 **Why this target:**
 
-
+A submission form on a real site gets malformed input constantly — empty
+pastes, JS bugs that send `null`, someone pasting an entire document — and
+none of that is an attack, it's just normal use. A crash on any of these turns
+a bad paste into a down service for every other writer trying to submit at
+the same time, which is a much bigger failure than politely rejecting one bad
+request. Requiring a 4xx specifically (not just "didn't crash") means the
+service also has to tell the caller what was wrong with their request rather
+than failing in a way that looks like a broken endpoint.
 
 ---
 
