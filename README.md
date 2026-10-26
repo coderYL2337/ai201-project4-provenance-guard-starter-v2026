@@ -123,15 +123,20 @@ average it into "unsure" by luck.
 
 | Label | Score range | The exact text a reader sees |
 |---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+| high-confidence human | 0.00 – 0.35 | "We think this was probably written by a person." |
+| unsure | 0.35 – 0.65 | "We can't tell with confidence whether this was written by a person or by AI." |
+| high-confidence AI | 0.65 – 1.00 | "We think this was most likely written by AI, not a person." |
 
 **Why I worded the "unsure" one this way:**
 <!-- It's the hardest of the three. It has to admit uncertainty without
      sounding like an accusation, because the person reading it may well have
      written every word themselves. -->
 
+It names the actual situation — the system couldn't decide — instead of picking
+a side and hedging with a number. It doesn't say "flagged" or "suspicious,"
+because someone who wrote every word themselves could land here just as
+easily as someone who didn't, and nothing in the wording should make the
+honest writer feel accused for being hard to read.
 
 
 ---
@@ -151,17 +156,17 @@ average it into "unsure" by luck.
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "The committee convened at dawn to review the proposal, and by noon the usual arguments had resurfaced, as if nobody in the room had read the minutes from the week before.", "creator_id": "lucy_test"}'
+  -d '{"text": "I burned the toast again this morning, swore at it, and ate it anyway because I was already late. My neighbors dog barked the whole time I was trying to find my keys -- which, of course, were sitting right on top of the fridge where Id left them last night.", "creator_id": "lucy_appeal_demo"}'
 ```
 
 ```json
 {
-  "confidence": 0.516,
-  "content_id": "639f843a-2367-4a08-9ffa-bb6f28f5ae44",
+  "confidence": 0.55888,
+  "content_id": "0928c761-8336-40f4-9e81-1b863c19a130",
   "guess": "unsure",
-  "label": "placeholder — scoring isn't wired up yet",
-  "model_score": 0.516,
-  "style_score": 0.5
+  "label": "We can't tell with confidence whether this was written by a person or by AI.",
+  "model_score": 0.51,
+  "style_score": 0.5852
 }
 ```
 
@@ -170,17 +175,18 @@ $ curl -X POST http://127.0.0.1:5000/submit \
 ```bash
 $ curl -X POST http://127.0.0.1:5000/appeal \
   -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+  -d '{"content_id": "0928c761-8336-40f4-9e81-1b863c19a130", "reasoning": "I wrote this myself this morning, it is a true story about my own breakfast."}'
 ```
 
 ```json
-
+{
+  "content_id": "0928c761-8336-40f4-9e81-1b863c19a130",
+  "message": "Appeal recorded. A human will review this decision.",
+  "status": "under_review"
+}
 ```
 
 **What the log shows afterwards**
-
-<!-- /appeal isn't built yet (Milestone 5), so this is /log right after the
-     submission above — not after an appeal. -->
 
 ```bash
 $ curl "http://127.0.0.1:5000/log?limit=3"
@@ -188,35 +194,44 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 
 ```json
 {
-  "count": 2,
+  "count": 3,
   "entries": [
     {
-      "combined_score": null,
-      "content_id": "b0198b9f-ce82-4bde-8783-fe853ba0e017",
-      "creator_id": "me",
+      "combined_score": 0.55888,
+      "content_id": "2ebe7218-c8cc-4fbc-8f7a-78609f5faa87",
+      "creator_id": "calib_unsure2",
       "guess": "unsure",
-      "label": "placeholder — scoring isn't wired up yet",
-      "model_score": 0.0032,
+      "label": "We can't tell with confidence whether this was written by a person or by AI.",
+      "model_score": 0.51,
       "status": "decided",
-      "style_score": null,
-      "timestamp": "2026-10-26T05:44:53+00:00"
+      "style_score": 0.5852,
+      "timestamp": "2026-10-26T06:27:04+00:00"
     },
     {
-      "combined_score": null,
-      "content_id": "639f843a-2367-4a08-9ffa-bb6f28f5ae44",
-      "creator_id": "lucy_test",
+      "combined_score": 0.55888,
+      "content_id": "0928c761-8336-40f4-9e81-1b863c19a130",
+      "creator_id": "lucy_appeal_demo",
       "guess": "unsure",
-      "label": "placeholder — scoring isn't wired up yet",
-      "model_score": 0.516,
+      "label": "We can't tell with confidence whether this was written by a person or by AI.",
+      "model_score": 0.51,
       "status": "decided",
-      "style_score": null,
-      "timestamp": "2026-10-26T05:54:48+00:00"
+      "style_score": 0.5852,
+      "timestamp": "2026-10-26T06:28:58+00:00"
+    },
+    {
+      "content_id": "0928c761-8336-40f4-9e81-1b863c19a130",
+      "creator_id": "lucy_appeal_demo",
+      "event": "appeal",
+      "reasoning": "I wrote this myself this morning, it is a true story about my own breakfast.",
+      "status": "under_review",
+      "timestamp": "2026-10-26T06:29:06+00:00"
     }
   ]
 }
 ```
 
 ---
+
 
 ## How I Used AI
 
