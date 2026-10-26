@@ -39,7 +39,23 @@
 <!-- The path a submission takes, from arriving to the label a reader sees.
      Six or seven steps — this is the trace you wrote in Milestone 1. -->
 
-
+1. A `POST /submit` arrives with `{"text": ..., "creator_id": ...}`.
+2. The route checks `text` is a non-empty string — bad input gets a `400`
+   immediately, before any model runs.
+3. `detector.model_signal(text)` runs GPT-2 locally, measures how predictable
+   the text is (perplexity), and turns that into a 0–1 `model_score`.
+4. `stylometry.style_signal(text)` measures sentence-length variation,
+   vocabulary variety, and punctuation density, and turns those into a 0–1
+   `style_score` — same direction as the model signal, higher means more
+   likely AI.
+5. `scoring.combine_signals(model_score, style_score)` merges the two into
+   one 0–1 score, weighted 0.35/0.65 toward the style signal.
+6. `scoring.score_to_label(combined_score)` turns that number into a
+   machine-readable `guess` and the exact sentence a reader sees.
+7. `audit.log_decision(...)` writes one JSON line to `logs/audit.jsonl` with
+   both signal scores, the combined score, and the label; the route answers
+   with `content_id`, `guess`, `confidence`, `label`, `model_score`, and
+   `style_score`.
 
 ---
 
@@ -237,15 +253,30 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Help after `python detector.py "..."` crashed with a
+  NumPy ABI error (`numpy.dtype size changed... Expected X from C header, got
+  Y`) right after setting up the venv.
+- *What came back:* An explanation that the installed torch build was compiled
+  against NumPy 1.x's C ABI, so an unconstrained install had pulled in NumPy
+  2.x, plus the fix: pin `numpy<2.0`.
+- *What I changed:* Added an explicit `numpy<2.0` line to `requirements.txt`
+  (it had been an unpinned transitive dependency of torch/transformers) and
+  reinstalled.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Run both signals over four calibration texts (clearly
+  AI, clearly human, formal human, lightly-edited AI) and investigate if any
+  score looked surprising.
+- *What came back:* `formal_human` — a single long, semicolon-joined human
+  sentence — scored almost as AI-like as the lightly-edited AI text. Printing
+  the three raw stylometry measures separately showed `sentence_length_spread`
+  returning `0.0` for a one-sentence input, which `style_signal` was reading
+  as "maximally uniform, therefore AI-like" instead of "not enough sentences
+  to measure."
+- *What I changed:* In `stylometry.py::style_signal`, a sentence count under 2
+  now scores that component as a neutral 0.5 instead of 1.0, so missing
+  evidence no longer reads as strong evidence of AI.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
