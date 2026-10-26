@@ -124,11 +124,18 @@
 ```bash
 $ curl -X POST http://127.0.0.1:5000/submit \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d '{"text": "The committee convened at dawn to review the proposal, and by noon the usual arguments had resurfaced, as if nobody in the room had read the minutes from the week before.", "creator_id": "lucy_test"}'
 ```
 
 ```json
-
+{
+  "confidence": 0.516,
+  "content_id": "639f843a-2367-4a08-9ffa-bb6f28f5ae44",
+  "guess": "unsure",
+  "label": "placeholder — scoring isn't wired up yet",
+  "model_score": 0.516,
+  "style_score": 0.5
+}
 ```
 
 **An appeal**
@@ -145,12 +152,41 @@ $ curl -X POST http://127.0.0.1:5000/appeal \
 
 **What the log shows afterwards**
 
+<!-- /appeal isn't built yet (Milestone 5), so this is /log right after the
+     submission above — not after an appeal. -->
+
 ```bash
 $ curl "http://127.0.0.1:5000/log?limit=3"
 ```
 
 ```json
-
+{
+  "count": 2,
+  "entries": [
+    {
+      "combined_score": null,
+      "content_id": "b0198b9f-ce82-4bde-8783-fe853ba0e017",
+      "creator_id": "me",
+      "guess": "unsure",
+      "label": "placeholder — scoring isn't wired up yet",
+      "model_score": 0.0032,
+      "status": "decided",
+      "style_score": null,
+      "timestamp": "2026-10-26T05:44:53+00:00"
+    },
+    {
+      "combined_score": null,
+      "content_id": "639f843a-2367-4a08-9ffa-bb6f28f5ae44",
+      "creator_id": "lucy_test",
+      "guess": "unsure",
+      "label": "placeholder — scoring isn't wired up yet",
+      "model_score": 0.516,
+      "status": "decided",
+      "style_score": null,
+      "timestamp": "2026-10-26T05:54:48+00:00"
+    }
+  ]
+}
 ```
 
 ---
