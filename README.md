@@ -341,12 +341,34 @@ The first one is slow while the model loads.
 <!-- Choose entries that show the interesting failures, not the ten easiest. -->
 
 ```json
-
+[
+  {"timestamp": "2026-11-02T04:58:44+00:00", "content_id": "fe75471c-0905-4064-801c-4a1818cdd740", "creator_id": "attacker_EV01", "guess": "unsure", "model_score": 0.1635, "style_score": 0.6287, "combined_score": 0.46588000000000007, "label": "We can't tell with confidence whether this was written by a person or by AI.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:45+00:00", "content_id": "4e795828-21f9-4aa0-857b-e87154389e9a", "creator_id": "attacker_EV10", "guess": "ai", "model_score": 0.9792, "style_score": 0.7463, "combined_score": 0.827815, "label": "We think this was most likely written by AI, not a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:46+00:00", "content_id": "35d3e0be-1f4c-4d22-856b-398b385cbb45", "creator_id": "attacker_FP02", "guess": "ai", "model_score": 0.7387, "style_score": 0.6549, "combined_score": 0.68423, "label": "We think this was most likely written by AI, not a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:46+00:00", "content_id": "b42605f0-7f18-4185-91c7-d96a61212530", "creator_id": "attacker_FP03", "guess": "ai", "model_score": 0.8051, "style_score": 0.6269, "combined_score": 0.68927, "label": "We think this was most likely written by AI, not a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:46+00:00", "content_id": "011174b8-ad4d-40c0-b8e4-e200b89fa5a5", "creator_id": "attacker_FP08", "guess": "unsure", "model_score": 0.3223, "style_score": 0.512, "combined_score": 0.44560500000000003, "label": "We can't tell with confidence whether this was written by a person or by AI.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:47+00:00", "content_id": "e8d2082f-985b-477a-9b7b-5e71d6286710", "creator_id": "attacker_PI02", "guess": "human", "model_score": 0.2044, "style_score": 0.3903, "combined_score": 0.325235, "label": "We think this was probably written by a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:47+00:00", "content_id": "739df652-d489-4a06-b1f9-5e384555bb19", "creator_id": "attacker_MF04", "guess": "ai", "model_score": 0.0112, "style_score": 1.0, "combined_score": 0.6539200000000001, "label": "We think this was most likely written by AI, not a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:48+00:00", "content_id": "9bae6fb5-1ba6-425d-b18c-d01c29b4239e", "creator_id": "attacker_MF06", "guess": "ai", "model_score": 0.9969, "style_score": 0.8333, "combined_score": 0.89056, "label": "We think this was most likely written by AI, not a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:49+00:00", "content_id": "991569c0-4969-4e08-81b5-47d394628b28", "creator_id": "attacker_flood", "guess": "human", "model_score": 0.0287, "style_score": 0.5, "combined_score": 0.33504500000000004, "label": "We think this was probably written by a person.", "status": "decided"},
+  {"timestamp": "2026-11-02T04:58:50+00:00", "creator_id": "attacker_flood", "event": "rejected", "status": "rejected", "reason": "rate_limited", "limit": "10 per 1 minute"}
+]
 ```
 
 **The single worst outcome** — the one I'd least want to explain to a writer
 whose work got caught by it:
 
+`FP07` — genuinely human writing that deliberately repeats a phrase for
+effect ("It rained on Monday. It rained on Tuesday...") — was flagged "most
+likely written by AI" at **0.731 confidence**, the single highest-confidence
+false accusation in the entire `false_positive` family. The writer did
+nothing wrong; they made a stylistic choice (repetition) that both signals
+read as a sign of AI generation: the style signal because repeated sentence
+structure looks like narrow vocabulary/uniform shape, and the model signal
+because a repeated phrase is, by definition, highly predictable to GPT-2.
+That's the worst kind of miss — not an edge-case input, but an ordinary
+person's deliberate craft choice turned into the strongest "evidence" against
+them in the whole run.
 
 
 ---
