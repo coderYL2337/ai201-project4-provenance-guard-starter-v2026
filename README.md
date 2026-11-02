@@ -291,7 +291,7 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
      times an hour, and a script sending a thousand variations to map your
      thresholds. Your numbers have to be liveable for the first and hostile to
      the second. -->
-     10 per minute means each submission averages about 6 seconds. A real human writer would not likely be faster when submitting their own writings. If a writer maximizes at 10 per minute, 200 per day means 20 minutes is used for submission. That is enough for a real human writer to update their account.
+     10 per minute means each submission averages about 6 seconds. A real human writer would not likely be faster when submitting their own writings. If a writer maximizes at 10 per minute, 200 per day means 20 minutes is used for submission. That is enough for a real human writer to update their account. 
 
 **What a caller counts as:** <!-- per address, or per creator_id? They fail
 differently — one script can look like a thousand callers, and one household
@@ -580,21 +580,73 @@ command either way.
 
 **What I changed:**
 
+In `config.py`, raised `AI_THRESHOLD` from `0.65` to `0.75` — one line, one
+number. `HUMAN_THRESHOLD` (0.35) and both signal weights (0.35/0.65) are
+untouched, so this only widens the unsure band on the AI side.
+
 **Which diagnosis pointed at it:**
 
+Diagnosis #1 and #4: every `false_positive` break (`FP02`–`FP07`) and 4 of
+10 of my own paragraphs cleared the old 0.65 line with combined scores of
+0.674–0.731 — a narrow, specific overshoot, not a wild one. That's a
+threshold problem, not a signal problem: the scores themselves were already
+telling an honest story (model_score running high on predictable-but-human
+prose), the line drawn across them was just in the wrong place.
 
 ### Attack Run — After
 
 <!-- Same format. `run_attacks.py --label after` -->
 
+| Family | Attacks | Before (held / broke) | After (held / broke) |
+|---|---|---|---|
+| `evasion` | 10 | 1 / 9 | 1 / 9 |
+| `false_positive` | 8 | 2 / 6 | **8 / 0** |
+| `flood_same_creator` | 12 | 12 / 0 | 12 / 0 |
+| `malformed` | 20 | 19 / 1 | 19 / 1 |
+| `prompt_injection` | 6 | 5 / 1 | 5 / 1 |
+| **Total** | **56** | **39 / 17** | **45 / 11** |
 
+The only rows that moved are the six `false_positive` attacks — same text,
+same signal scores, only the label changed:
+
+```json
+// FP02 — human writing in a formal register
+// before: {"guess": "ai",     "confidence": 0.68423, "verdict": "BROKE"}
+// after:  {"guess": "unsure", "confidence": 0.68423, "verdict": "HELD"}
+
+// FP07 — human writing that repeats a phrase deliberately
+// before: {"guess": "ai",     "confidence": 0.731,   "verdict": "BROKE"}
+// after:  {"guess": "unsure", "confidence": 0.731,   "verdict": "HELD"}
+```
+
+Every `evasion`, `prompt_injection`, `malformed`, and `flood_same_creator`
+row is identical to the before run — this change only ever touches scores in
+the 0.65–0.75 band, and none of those attacks land there.
 
 **Did it help, and how do I know:**
 
 <!-- Widening the unsure band usually fixes one problem and creates another.
      Reporting that trade honestly is worth full credit. -->
 
+Yes, for exactly the problem it targeted: all 6 `false_positive` breaks
+became HELD (6/8 → 0/8 broke), and criterion 1 went from 4/10 of my own
+writing flagged `ai` to **0/10**, now passing its ≤1/10 target. I know
+because the content and signal scores are byte-for-byte identical between
+runs — `model_score` and `style_score` for every attack match before and
+after — only the label changed, which isolates the fix to the threshold and
+rules out "the model just scored it differently this time."
 
+The cost: `evasion` is completely untouched (still 9/10 broke) because every
+evasion attack was already scoring *below* 0.65, so raising the ceiling
+further does nothing for the thing signal two is worst at. And criterion 3
+(label coverage) got *worse*, not better — my "confidently AI" calibration
+text (a generic AI framework paragraph, combined score 0.667) now also
+reads as `unsure` instead of `ai`, so "high-confidence AI" stopped firing
+on ordinary AI-style prose that isn't even trying to evade anything. I
+traded some of the detector's ability to call out plain, unremarkable AI
+text in exchange for not accusing real writers — which is the one-sided
+trade criterion 1's own justification argues for, but it's a real cost, not
+a free fix.
 
 ---
 
@@ -603,14 +655,55 @@ command either way.
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
+**9/10 `evasion` attacks still get through.** Typos, broken sentences,
+padding, and a pasted quotation all still pull `style_score` down into the
+0.38–0.65 range on unmodified AI text (diagnosis #2), and raising
+`AI_THRESHOLD` does nothing here since these scores were already under 0.65
+before the change. The real fix is in `stylometry.py` — the three measures
+need to be harder to move with surface noise alone (e.g. normalizing typos
+before measuring word variety, or weighting sentence-length spread by
+paragraph rather than by each cosmetic break) — and that's a signal rewrite,
+not a config edit. I stopped because the brief asks for one measured change,
+not a rewrite of signal two on top of it.
 
+**`RQ07` still crashes the service with a `500`.** `payload.get("text")` on a
+JSON array body is still unguarded (diagnosis #6) — this fix is independent
+of the threshold change and untouched by it. I'd add an `isinstance(payload,
+dict)` check at the top of `submit()` before anything else runs; I didn't
+because it's a different stage of the service than the one diagnosis I chose
+to act on and measure this round.
+
+**Criterion 2 (score spread) and criterion 3 (label coverage) are still
+missed, and criterion 3 is now missed in a new way.** The combined-score gap
+between the clearly-AI and clearly-human dog-walk texts is still 0.297,
+unchanged — the threshold move only relabels scores, it doesn't change what
+`combine_signals` produces, so this criterion needed a reweighting, not a
+threshold move, and I didn't touch the weights this round. Worse, my
+"confidently AI" calibration text for label coverage (0.667) now also reads
+`unsure` instead of `ai`, so that scenario currently produces `unsure,
+unsure, unsure` — missing both non-unsure labels instead of just one. I
+haven't re-run the attack set against this specific regression beyond what's
+already in the after-run output, so I can't say how many other borderline-AI
+submissions in the wild would now land in `unsure` instead of `ai`.
+
+**I have not re-tested beyond the single after-run captured above.** I'm
+stopping here rather than iterating further changes without fresh
+measurements to back them — the whole point of "one change, measured
+properly" is that each additional change needs its own before/after, and I
+don't have another trial to spend confirming it.
 
 **The trade I'd make if this ran for real:**
 
 <!-- Two sentences. Fewer wrong accusations means more AI text getting through.
      Say which way you'd go and WHO PAYS FOR IT. -->
 
-
+I'd keep the wider unsure band and accept that more AI text slides through
+unflagged, because the people who pay for a false accusation (a real writer
+losing a post and having to appeal something true) have far less recourse
+than the site loses by missing some AI content. Concretely: real writers pay
+less under this config, and the site — plus whoever reads the unflagged AI
+text — pays more; I'd rather that cost fall on the harder-to-measure side
+than on an identifiable person.
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
