@@ -379,17 +379,112 @@ them in the whole run.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| 1. my own writing | ≤1/10 labelled "ai", all 3 trials | 4/10 ai | 4/10 ai | 4/10 ai | **Miss** |
+| 2. score spread | ≥0.4 gap between the AI and human text, all 3 trials | Δ0.297 (0.734 vs 0.437) | Δ0.297 (0.734 vs 0.437) | Δ0.297 (0.734 vs 0.437) | **Miss** |
+| 3. label coverage | all 3 labels reachable, all 3 trials | ai, unsure, unsure — no "human" | ai, unsure, unsure — no "human" | ai, unsure, unsure — no "human" | **Miss** |
+| 4. appeal path | 10/10 appeals move status + log, every trial | not run by `run_eval.py` — needs a submission's `content_id` fed into a second `/appeal` call, tested by hand instead | — | — | **Not covered by this run** |
+| 5. bad input | 4xx for all 4 inputs, all 3 trials | 400, 400, 400, 200 | 400, 400, 400, 200 | 400, 400, 400, 200 | **Miss** |
 
 **Real output from one trial**, pasted as text, naming the file and function
 that produced it:
 
-```json
+<!-- Produced by run_eval.py::main — POSTs each scenario body to app.py::submit
+     and records the JSON response verbatim. This is Trial 1 of the "my own
+     writing" scenario (criterion 1). -->
 
+```json
+[
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.659835,
+    "model_score": 0.7964,
+    "style_score": 0.5863,
+    "label": "We think this was most likely written by AI, not a person.",
+    "sent": "I am so proud of the person you are becoming. You bring so much laught"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6389050000000001,
+    "model_score": 0.7782,
+    "style_score": 0.5639,
+    "label": "We can't tell with confidence whether this was written by a person or by AI.",
+    "sent": "I like watermelons. They are my favorite fruit. Too bad they are more "
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.62755,
+    "model_score": 0.7608,
+    "style_score": 0.5558,
+    "label": "We can't tell with confidence whether this was written by a person or by AI.",
+    "sent": "In many developing countries, people are still struggling to feed thei"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5033099999999999,
+    "model_score": 0.4452,
+    "style_score": 0.5346,
+    "label": "We can't tell with confidence whether this was written by a person or by AI.",
+    "sent": "When latternflies and cicidas appear, there seem to be so many of them"
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.6744950000000001,
+    "model_score": 0.7289,
+    "style_score": 0.6452,
+    "label": "We think this was most likely written by AI, not a person.",
+    "sent": "I wish there is more time everyday. I wish I can split into several co"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.51202,
+    "model_score": 0.4439,
+    "style_score": 0.5487,
+    "label": "We can't tell with confidence whether this was written by a person or by AI.",
+    "sent": "Dogs or cats? I like both of them, but I cannot keep either as pet at "
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.688285,
+    "model_score": 0.8294,
+    "style_score": 0.6123,
+    "label": "We think this was most likely written by AI, not a person.",
+    "sent": "I like tea very much. I remember when I was young, my grandma often ma"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.5365300000000001,
+    "model_score": 0.4311,
+    "style_score": 0.5933,
+    "label": "We can't tell with confidence whether this was written by a person or by AI.",
+    "sent": "High school swim practices start again at the nearby rec center. The t"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.63462,
+    "model_score": 0.7758,
+    "style_score": 0.5586,
+    "label": "We can't tell with confidence whether this was written by a person or by AI.",
+    "sent": "I recently started learning to play the guitar. It is challenging but "
+  },
+  {
+    "status": 200,
+    "guess": "ai",
+    "confidence": 0.725775,
+    "model_score": 0.886,
+    "style_score": 0.6395,
+    "label": "We think this was most likely written by AI, not a person.",
+    "sent": "Last weekend, I went hiking with my friends in the nearby mountains. T"
+  }
+]
 ```
 
 **Diagnoses**
