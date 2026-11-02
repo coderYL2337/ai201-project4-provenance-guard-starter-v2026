@@ -503,7 +503,76 @@ that produced it:
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
 
+**1. Signal one's blind spot is the single biggest source of false accusations.**
+*Stage: signal one — `detector.py::model_signal`.*
+Plain, ordinary sentences are low-perplexity, and low perplexity reads as
+"more likely AI" regardless of who wrote it. That one mechanism explains two
+separate failures: 4 of my own 10 plain paragraphs scored `model_score`
+0.73–0.89 and were called `ai` (criterion 1), and 6 of 8 `false_positive`
+attacks — formal writing, a non-native speaker, a student essay, technical
+docs — scored `model_score` 0.74–0.88 for the same reason (`FP02`–`FP07`).
+It's one problem, not seven: the signal can't tell "predictable" from
+"machine-written," and ordinary human writing is predictable too.
 
+**2. Signal two is cheap to fool by reshaping text without changing its content.**
+*Stage: signal two — `stylometry.py::style_signal`.*
+9 of the 10 `evasion` attacks broke this way. Typos raise word variety
+(`EV01`), broken-up sentences raise length spread (`EV02`), padding with
+punctuation shifts punctuation density (`EV07`), a pasted quotation changes
+sentence shape (`EV03`) — each targets one of the three measures the signal
+computes, and each pulled `style_score` down to 0.38–0.65 on text that was
+otherwise unmodified AI prose. Because the combining rule weights style at
+0.65, that drop was enough to drag the combined score out of the `ai` band
+and into `unsure` every time, even though nothing about the content changed.
+
+**3. The combining rule's weighting compresses real separation, not just false positives.**
+*Stage: the combining rule — `scoring.py::combine_signals`.*
+Criterion 2's miss is the same weighting from a different angle: the
+clearly-AI and clearly-human dog-walk texts had a 0.52 gap on `model_score`
+alone (0.866 vs 0.343), but weighting style at 0.65 — where the gap was only
+0.18 (0.663 vs 0.487) — compressed the combined gap to 0.297, under the 0.4
+target. The same weighting that protects honest writers from signal one's
+blind spot also flattens legitimate separation between genuinely obvious
+cases.
+
+**4. "High-confidence human" is reachable in principle but never actually landed in this run — same root cause as #1 and #3.**
+*Stage: the combining rule, downstream of signal one.*
+Nothing is wrong with the label mapping itself — `score_to_label` correctly
+maps anything under 0.35 to "human." The problem is upstream: with weights of
+0.35/0.65, a submission only lands under 0.35 if `model_score` is quite low
+on its own, and signal one's blind spot means plain human writing rarely
+scores that low. In the label-coverage scenario, the human-anecdote text's
+`model_score` was 0.56 — reasonable for honest writing, but not low enough to
+clear the human threshold even with a favorable style score.
+
+**5. The route has no upper bound on input size, so "enormous" isn't rejected — it's scored.**
+*Stage: the route — `app.py::submit`.*
+The only input validation is `isinstance(text, str) and text.strip()`. A
+50,000-word body passes that check and gets scored normally (`200`, not the
+expected `4xx`) — criterion 5's one miss. The same missing check is why
+`MF05`–`MF08` (a 100k-character word, emoji-only text, RTL script, 60,000
+characters) all reached the signals instead of being turned away, producing
+oddly overconfident `ai` guesses (`MF06` at 0.89) driven by degenerate
+stylometry on content that was never real writing to begin with.
+
+**6. One unhandled type crashes the whole request.**
+*Stage: the route — `app.py::submit`.*
+`payload = request.get_json(silent=True) or {}` only guards against an empty
+body — it never checks that the parsed JSON is a dict. `RQ07` sent a JSON
+*array*, which is truthy, so `payload` stayed a list and `payload.get("text")`
+raised `AttributeError: 'list' object has no attribute 'get'`, surfacing as a
+raw Werkzeug `500` traceback instead of a clean `400`. This is the one
+genuinely unambiguous break in the whole attack run.
+
+**7. The one prompt-injection "success" (`PI02`) probably isn't the injection working.**
+*Stage: none — there is no instruction-reading stage at all.*
+Neither signal parses the text as instructions; both just score it as prose.
+`PI02`'s `model_score` (0.20) and `style_score` (0.39) combined to 0.325 —
+under the human threshold — which is a plausible score for an ordinary
+paragraph regardless of the fake "SYSTEM:" text prepended to it. I can't
+rule out that the injected text coincidentally scored low rather than being
+obeyed, since nothing in `detector.py` or `stylometry.py` reads it as a
+command either way.
 
 ---
 
@@ -512,6 +581,7 @@ that produced it:
 **What I changed:**
 
 **Which diagnosis pointed at it:**
+
 
 ### Attack Run — After
 
