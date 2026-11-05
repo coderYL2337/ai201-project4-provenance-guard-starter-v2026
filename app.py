@@ -205,8 +205,14 @@ def submit():
     payload = request.get_json(silent=True) or {}
     text = payload.get("text")
     creator_id = payload.get("creator_id")
+    logged_creator_id = creator_id if isinstance(creator_id, str) and creator_id.strip() else "unknown"
 
     if not isinstance(text, str) or not text.strip():
+        audit.log_rejection(
+            creator_id=logged_creator_id,
+            reason="bad_request",
+            message="`text` must be a non-empty string.",
+        )
         return jsonify({
             "error": "bad_request",
             "message": "`text` must be a non-empty string.",
@@ -219,6 +225,7 @@ def submit():
     except detector.DetectorUnavailable as exc:
         return jsonify({"error": "detector_unavailable", "message": str(exc)}), 503
     except ValueError as exc:
+        audit.log_rejection(creator_id=logged_creator_id, reason="bad_request", message=str(exc))
         return jsonify({"error": "bad_request", "message": str(exc)}), 400
 
     style_score = stylometry.style_signal(text)
@@ -270,11 +277,21 @@ def appeal():
     reasoning = payload.get("reasoning")
 
     if not isinstance(content_id, str) or not content_id.strip():
+        audit.log_rejection(
+            creator_id="unknown",
+            reason="bad_request",
+            message="`content_id` must be a non-empty string.",
+        )
         return jsonify({
             "error": "bad_request",
             "message": "`content_id` must be a non-empty string.",
         }), 400
     if not isinstance(reasoning, str) or not reasoning.strip():
+        audit.log_rejection(
+            creator_id="unknown",
+            reason="bad_request",
+            message="`reasoning` must be a non-empty string.",
+        )
         return jsonify({
             "error": "bad_request",
             "message": "`reasoning` must be a non-empty string.",
@@ -282,6 +299,7 @@ def appeal():
 
     existing = audit.entries_for(content_id)
     if not existing:
+        audit.log_rejection(creator_id="unknown", reason="not_found", content_id=content_id)
         return jsonify({
             "error": "not_found",
             "message": f"No submission found for content_id '{content_id}'.",
